@@ -152,25 +152,5 @@ namespace ConsoleApp1
 
             return $"{prefix}{type.Name}";
         }
-
-        static void ConvertCsToCake()
-        {
-            string output = "dist";
-            string[] files = Directory.GetFiles(@"D:\Visual Studio Projects\ConsoleApp1\ConsoleApp1\cake", "*.cake.cs", SearchOption.AllDirectories);
-
-            if (!Directory.Exists(output))
-            {
-                Directory.CreateDirectory(output);
-            }
-
-            foreach (var info in files.Select(file => new FileInfo(file)))
-            {
-                string outputFilename = info.Name.Replace(".cs", string.Empty);
-                string cakeFile = CakeFileConverter.ToCakeFile(File.ReadAllText(info.FullName));
-                File.WriteAllText(Path.Combine(output, outputFilename), cakeFile);
-
-                return;
-            }
-        }
     }
 }
