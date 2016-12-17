@@ -1,11 +1,5 @@
 using System;
 using System.Linq;
-using Cake.Common;
-using Cake.Common.Build;
-using Cake.Common.Diagnostics;
-using Cake.Common.IO;
-using Cake.Common.Security;
-using Cake.Common.Tools.Chocolatey;
 using Cake.Common.Tools.Chocolatey.Pack;
 using Cake.Common.Tools.Chocolatey.Push;
 using Cake.Common.Tools.DotNetCore;
@@ -14,21 +8,18 @@ using Cake.Common.Tools.DotNetCore.Pack;
 using Cake.Common.Tools.DotNetCore.Publish;
 using Cake.Common.Tools.DotNetCore.Restore;
 using Cake.Common.Tools.DotNetCore.Test;
-using Cake.Common.Tools.GitReleaseManager;
 using Cake.Common.Tools.GitReleaseManager.Create;
-using Cake.Common.Tools.NuGet;
 using Cake.Common.Tools.NuGet.Pack;
 using Cake.Common.Tools.NuGet.Push;
 using Cake.Common.Tools.OpenCover;
-using Cake.Common.Tools.ReportGenerator;
 using Cake.Core;
 using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Coveralls;
 
-namespace Playground
+namespace ConsoleApp1
 {
-    public class Build : CakeFile
+    public class CakeBuild : CakeFileIntellisense
     {
         public override void Execute()
         {
@@ -64,11 +55,11 @@ namespace Playground
                 // Increase verbosity?
                 if (parameters.IsMainCakeBranch && (context.Log.Verbosity != Verbosity.Diagnostic))
                 {
-                    Context.Information("Increasing verbosity to diagnostic.");
+                    Information("Increasing verbosity to diagnostic.");
                     context.Log.Verbosity = Verbosity.Diagnostic;
                 }
 
-                Context.Information("Building version {0} of Cake ({1}, {2}) using version {3} of Cake. (IsTagged: {4})",
+                Information("Building version {0} of Cake ({1}, {2}) using version {3} of Cake. (IsTagged: {4})",
                     parameters.Version.SemVersion,
                     parameters.Configuration,
                     parameters.Target,
@@ -83,19 +74,19 @@ namespace Playground
             Task("Clean")
                 .Does(() =>
                 {
-                    Context.CleanDirectories(parameters.Paths.Directories.ToClean);
+                    CleanDirectories(parameters.Paths.Directories.ToClean);
                 });
 
             Task("Patch-Project-Json")
                 .IsDependentOn("Clean")
                 .Does(() =>
                 {
-                    var projects = Context.GetFiles("./src/**/project.json");
+                    var projects = GetFiles("./src/**/project.json");
                     foreach (var project in projects)
                     {
                         if (!parameters.Version.PatchProjectJson(project))
                         {
-                            Context.Warning("No version specified in {0}.", project.FullPath);
+                            Warning("No version specified in {0}.", project.FullPath);
                         }
                     }
                 });
@@ -104,7 +95,7 @@ namespace Playground
                 .IsDependentOn("Clean")
                 .Does(() =>
                 {
-                    Context.DotNetCoreRestore("./", new DotNetCoreRestoreSettings
+                    DotNetCoreRestore("./", new DotNetCoreRestoreSettings
                     {
                         Verbose = false,
                         Verbosity = DotNetCoreRestoreVerbosity.Warning,
@@ -122,10 +113,10 @@ namespace Playground
                 .IsDependentOn("Restore-NuGet-Packages")
                 .Does(() =>
                 {
-                    var projects = Context.GetFiles("./**/*.xproj");
+                    var projects = GetFiles("./**/*.xproj");
                     foreach (var project in projects)
                     {
-                        Context.DotNetCoreBuild(project.GetDirectory().FullPath, new DotNetCoreBuildSettings
+                        DotNetCoreBuild(project.GetDirectory().FullPath, new DotNetCoreBuildSettings
                         {
                             VersionSuffix = parameters.Version.DotNetAsterix,
                             Configuration = parameters.Configuration
@@ -137,12 +128,12 @@ namespace Playground
                 .IsDependentOn("Build")
                 .Does(() =>
                 {
-                    var projects = Context.GetFiles("./src/**/*.Tests.xproj");
+                    var projects = GetFiles("./src/**/*.Tests.xproj");
                     foreach (var project in projects)
                     {
-                        if (Context.IsRunningOnWindows())
+                        if (IsRunningOnWindows())
                         {
-                            var apiUrl = Context.EnvironmentVariable("APPVEYOR_API_URL");
+                            var apiUrl = EnvironmentVariable("APPVEYOR_API_URL");
                             try
                             {
                                 if (!string.IsNullOrEmpty(apiUrl))
@@ -165,7 +156,7 @@ namespace Playground
 
                                 if (!parameters.SkipOpenCover)
                                 {
-                                    Context.OpenCover(testAction,
+                                    OpenCover(testAction,
                             parameters.Paths.Files.TestCoverageOutputFilePath,
                             new OpenCoverSettings
                             {
@@ -194,10 +185,10 @@ namespace Playground
                             var name = project.GetFilenameWithoutExtension();
                             var dirPath = project.GetDirectory().FullPath;
                             var config = parameters.Configuration;
-                            var xunit = Context.GetFiles(dirPath + "/bin/" + config + "/net451/*/dotnet-test-xunit.exe").First().FullPath;
-                            var testfile = Context.GetFiles(dirPath + "/bin/" + config + "/net451/*/" + name + ".dll").First().FullPath;
+                            var xunit = GetFiles(dirPath + "/bin/" + config + "/net451/*/dotnet-test-xunit.exe").First().FullPath;
+                            var testfile = GetFiles(dirPath + "/bin/" + config + "/net451/*/" + name + ".dll").First().FullPath;
 
-                            using (var process = Context.StartAndReturnProcess("mono", new ProcessSettings { Arguments = xunit + " " + testfile }))
+                            using (var process = StartAndReturnProcess("mono", new ProcessSettings { Arguments = xunit + " " + testfile }))
                             {
                                 process.WaitForExit();
                                 if (process.GetExitCode() != 0)
@@ -209,9 +200,9 @@ namespace Playground
                     }
 
                     // Generate the HTML version of the Code Coverage report if the XML file exists
-                    if (Context.FileExists(parameters.Paths.Files.TestCoverageOutputFilePath))
+                    if (FileExists(parameters.Paths.Files.TestCoverageOutputFilePath))
                     {
-                        Context.ReportGenerator(parameters.Paths.Files.TestCoverageOutputFilePath, parameters.Paths.Directories.TestResults);
+                        ReportGenerator(parameters.Paths.Files.TestCoverageOutputFilePath, parameters.Paths.Directories.TestResults);
                     }
                 });
 
@@ -220,7 +211,7 @@ namespace Playground
                 .Does(() =>
                 {
                     // .NET 4.5
-                    Context.DotNetCorePublish("./src/Cake", new DotNetCorePublishSettings
+                    DotNetCorePublish("./src/Cake", new DotNetCorePublishSettings
                     {
                         Framework = "net45",
                         VersionSuffix = parameters.Version.DotNetAsterix,
@@ -231,7 +222,7 @@ namespace Playground
                     });
 
                     // .NET Core
-                    Context.DotNetCorePublish("./src/Cake", new DotNetCorePublishSettings
+                    DotNetCorePublish("./src/Cake", new DotNetCorePublishSettings
                     {
                         Framework = "netcoreapp1.0",
                         Configuration = parameters.Configuration,
@@ -242,8 +233,8 @@ namespace Playground
                     });
 
                     // Copy license
-                    Context.CopyFileToDirectory("./LICENSE", parameters.Paths.Directories.ArtifactsBinNet45);
-                    Context.CopyFileToDirectory("./LICENSE", parameters.Paths.Directories.ArtifactsBinNetCoreApp10);
+                    CopyFileToDirectory("./LICENSE", parameters.Paths.Directories.ArtifactsBinNet45);
+                    CopyFileToDirectory("./LICENSE", parameters.Paths.Directories.ArtifactsBinNetCoreApp10);
                 });
 
             Task("Zip-Files")
@@ -251,12 +242,12 @@ namespace Playground
                 .Does(() =>
                 {
                     // .NET 4.5
-                    var homebrewFiles = Context.GetFiles(parameters.Paths.Directories.ArtifactsBinNet45.FullPath + "/**/*");
-                    Context.Zip(parameters.Paths.Directories.ArtifactsBinNet45, parameters.Paths.Files.ZipArtifactPathDesktop, homebrewFiles);
+                    var homebrewFiles = GetFiles(parameters.Paths.Directories.ArtifactsBinNet45.FullPath + "/**/*");
+                    Zip(parameters.Paths.Directories.ArtifactsBinNet45, parameters.Paths.Files.ZipArtifactPathDesktop, homebrewFiles);
 
                     // .NET Core
-                    var coreclrFiles = Context.GetFiles(parameters.Paths.Directories.ArtifactsBinNetCoreApp10.FullPath + "/**/*");
-                    Context.Zip(parameters.Paths.Directories.ArtifactsBinNetCoreApp10, parameters.Paths.Files.ZipArtifactPathCoreClr, coreclrFiles);
+                    var coreclrFiles = GetFiles(parameters.Paths.Directories.ArtifactsBinNetCoreApp10.FullPath + "/**/*");
+                    Zip(parameters.Paths.Directories.ArtifactsBinNetCoreApp10, parameters.Paths.Files.ZipArtifactPathCoreClr, coreclrFiles);
                 });
 
             Task("Create-Chocolatey-Packages")
@@ -268,7 +259,7 @@ namespace Playground
                     foreach (var package in parameters.Packages.Chocolatey)
                     {
                         // Create package.
-                        Context.ChocolateyPack(package.NuspecPath, new ChocolateyPackSettings
+                        ChocolateyPack(package.NuspecPath, new ChocolateyPackSettings
                         {
                             Version = parameters.Version.SemVersion,
                             ReleaseNotes = parameters.ReleaseNotes.Notes.ToArray(),
@@ -283,7 +274,7 @@ namespace Playground
                 .Does(() =>
                 {
                     // Build libraries
-                    var projects = Context.GetFiles("./**/*.xproj");
+                    var projects = GetFiles("./**/*.xproj");
                     foreach (var project in projects)
                     {
                         var name = project.GetDirectory().FullPath;
@@ -293,7 +284,7 @@ namespace Playground
                             continue;
                         }
 
-                        Context.DotNetCorePack(project.GetDirectory().FullPath, new DotNetCorePackSettings
+                        DotNetCorePack(project.GetDirectory().FullPath, new DotNetCorePackSettings
                         {
                             VersionSuffix = parameters.Version.DotNetAsterix,
                             Configuration = parameters.Configuration,
@@ -304,7 +295,7 @@ namespace Playground
                     }
 
                     // Cake - Symbols - .NET 4.5
-                    Context.NuGetPack("./nuspec/Cake.symbols.nuspec", new NuGetPackSettings
+                    NuGetPack("./nuspec/Cake.symbols.nuspec", new NuGetPackSettings
                     {
                         Version = parameters.Version.SemVersion,
                         ReleaseNotes = parameters.ReleaseNotes.Notes.ToArray(),
@@ -315,7 +306,7 @@ namespace Playground
                     });
 
                     // Cake - .NET 4.5
-                    Context.NuGetPack("./nuspec/Cake.nuspec", new NuGetPackSettings
+                    NuGetPack("./nuspec/Cake.nuspec", new NuGetPackSettings
                     {
                         Version = parameters.Version.SemVersion,
                         ReleaseNotes = parameters.ReleaseNotes.Notes.ToArray(),
@@ -326,7 +317,7 @@ namespace Playground
                     });
 
                     // Cake Symbols - .NET Core
-                    Context.NuGetPack("./nuspec/Cake.CoreCLR.symbols.nuspec", new NuGetPackSettings
+                    NuGetPack("./nuspec/Cake.CoreCLR.symbols.nuspec", new NuGetPackSettings
                     {
                         Version = parameters.Version.SemVersion,
                         ReleaseNotes = parameters.ReleaseNotes.Notes.ToArray(),
@@ -337,7 +328,7 @@ namespace Playground
                     });
 
                     // Cake - .NET Core
-                    Context.NuGetPack("./nuspec/Cake.CoreCLR.nuspec", new NuGetPackSettings
+                    NuGetPack("./nuspec/Cake.CoreCLR.nuspec", new NuGetPackSettings
                     {
                         Version = parameters.Version.SemVersion,
                         ReleaseNotes = parameters.ReleaseNotes.Notes.ToArray(),
@@ -353,23 +344,23 @@ namespace Playground
                 .WithCriteria(() => parameters.IsRunningOnAppVeyor)
                 .Does(() =>
                 {
-                    BuildSystem.AppVeyor.UploadArtifact(parameters.Paths.Files.ZipArtifactPathDesktop);
-                    BuildSystem.AppVeyor.UploadArtifact(parameters.Paths.Files.ZipArtifactPathCoreClr);
-                    foreach (var package in Context.GetFiles(parameters.Paths.Directories.NugetRoot + "/*"))
+                    AppVeyor.UploadArtifact(parameters.Paths.Files.ZipArtifactPathDesktop);
+                    AppVeyor.UploadArtifact(parameters.Paths.Files.ZipArtifactPathCoreClr);
+                    foreach (var package in GetFiles(parameters.Paths.Directories.NugetRoot + "/*"))
                     {
-                        BuildSystem.AppVeyor.UploadArtifact(package);
+                        AppVeyor.UploadArtifact(package);
                     }
                 });
 
             Task("Upload-Coverage-Report")
-                .WithCriteria(() => Context.FileExists(parameters.Paths.Files.TestCoverageOutputFilePath))
+                .WithCriteria(() => FileExists(parameters.Paths.Files.TestCoverageOutputFilePath))
                 .WithCriteria(() => !parameters.IsLocalBuild)
                 .WithCriteria(() => !parameters.IsPullRequest)
                 .WithCriteria(() => parameters.IsMainCakeRepo)
                 .IsDependentOn("Run-Unit-Tests")
                 .Does(() =>
                 {
-                    Context.CoverallsIo(parameters.Paths.Files.TestCoverageOutputFilePath, new CoverallsIoSettings()
+                    CoverallsIo(parameters.Paths.Files.TestCoverageOutputFilePath, new CoverallsIoSettings()
                     {
                         RepoToken = parameters.Coveralls.RepoToken
                     });
@@ -381,14 +372,14 @@ namespace Playground
                 .Does(() =>
                 {
                     // Resolve the API key.
-                    var apiKey = Context.EnvironmentVariable("MYGET_API_KEY");
+                    var apiKey = EnvironmentVariable("MYGET_API_KEY");
                     if (string.IsNullOrEmpty(apiKey))
                     {
                         throw new InvalidOperationException("Could not resolve MyGet API key.");
                     }
 
                     // Resolve the API url.
-                    var apiUrl = Context.EnvironmentVariable("MYGET_API_URL");
+                    var apiUrl = EnvironmentVariable("MYGET_API_URL");
                     if (string.IsNullOrEmpty(apiUrl))
                     {
                         throw new InvalidOperationException("Could not resolve MyGet API url.");
@@ -397,7 +388,7 @@ namespace Playground
                     foreach (var package in parameters.Packages.All)
                     {
                         // Push the package.
-                        Context.NuGetPush(package.PackagePath, new NuGetPushSettings
+                        NuGetPush(package.PackagePath, new NuGetPushSettings
                         {
                             Source = apiUrl,
                             ApiKey = apiKey
@@ -406,7 +397,7 @@ namespace Playground
                 })
             .OnError(exception =>
             {
-                Context.Information("Publish-MyGet Task failed, but continuing with next Task...");
+                Information("Publish-MyGet Task failed, but continuing with next Task...");
                 publishingError = true;
             });
 
@@ -416,14 +407,14 @@ namespace Playground
                 .Does(() =>
                 {
                     // Resolve the API key.
-                    var apiKey = Context.EnvironmentVariable("NUGET_API_KEY");
+                    var apiKey = EnvironmentVariable("NUGET_API_KEY");
                     if (string.IsNullOrEmpty(apiKey))
                     {
                         throw new InvalidOperationException("Could not resolve NuGet API key.");
                     }
 
                     // Resolve the API url.
-                    var apiUrl = Context.EnvironmentVariable("NUGET_API_URL");
+                    var apiUrl = EnvironmentVariable("NUGET_API_URL");
                     if (string.IsNullOrEmpty(apiUrl))
                     {
                         throw new InvalidOperationException("Could not resolve NuGet API url.");
@@ -432,7 +423,7 @@ namespace Playground
                     foreach (var package in parameters.Packages.Nuget)
                     {
                         // Push the package.
-                        Context.NuGetPush(package.PackagePath, new NuGetPushSettings
+                        NuGetPush(package.PackagePath, new NuGetPushSettings
                         {
                             ApiKey = apiKey,
                             Source = apiUrl
@@ -441,7 +432,7 @@ namespace Playground
                 })
             .OnError(exception =>
             {
-                Context.Information("Publish-NuGet Task failed, but continuing with next Task...");
+                Information("Publish-NuGet Task failed, but continuing with next Task...");
                 publishingError = true;
             });
 
@@ -451,14 +442,14 @@ namespace Playground
                 .Does(() =>
                 {
                     // Resolve the API key.
-                    var apiKey = Context.EnvironmentVariable("CHOCOLATEY_API_KEY");
+                    var apiKey = EnvironmentVariable("CHOCOLATEY_API_KEY");
                     if (string.IsNullOrEmpty(apiKey))
                     {
                         throw new InvalidOperationException("Could not resolve Chocolatey API key.");
                     }
 
                     // Resolve the API url.
-                    var apiUrl = Context.EnvironmentVariable("CHOCOLATEY_API_URL");
+                    var apiUrl = EnvironmentVariable("CHOCOLATEY_API_URL");
                     if (string.IsNullOrEmpty(apiUrl))
                     {
                         throw new InvalidOperationException("Could not resolve Chocolatey API url.");
@@ -467,7 +458,7 @@ namespace Playground
                     foreach (var package in parameters.Packages.Chocolatey)
                     {
                         // Push the package.
-                        Context.ChocolateyPush(package.PackagePath, new ChocolateyPushSettings
+                        ChocolateyPush(package.PackagePath, new ChocolateyPushSettings
                         {
                             ApiKey = apiKey,
                             Source = apiUrl
@@ -476,7 +467,7 @@ namespace Playground
                 })
             .OnError(exception =>
             {
-                Context.Information("Publish-Chocolatey Task failed, but continuing with next Task...");
+                Information("Publish-Chocolatey Task failed, but continuing with next Task...");
                 publishingError = true;
             });
 
@@ -485,12 +476,12 @@ namespace Playground
                 .IsDependentOn("Zip-Files")
                 .Does(() =>
                 {
-                    var hash = Context.CalculateFileHash(parameters.Paths.Files.ZipArtifactPathDesktop).ToHex();
-                    Context.Information("Hash for creating HomeBrew PullRequest: {0}", hash);
+                    var hash = CalculateFileHash(parameters.Paths.Files.ZipArtifactPathDesktop).ToHex();
+                    Information("Hash for creating HomeBrew PullRequest: {0}", hash);
                 })
             .OnError(exception =>
             {
-                Context.Information("Publish-HomeBrew Task failed, but continuing with next Task...");
+                Information("Publish-HomeBrew Task failed, but continuing with next Task...");
                 publishingError = true;
             });
 
@@ -498,20 +489,20 @@ namespace Playground
                 .WithCriteria(() => parameters.ShouldPublish)
                 .Does(() =>
                 {
-                    Context.GitReleaseManagerAddAssets(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", parameters.Version.Milestone, parameters.Paths.Files.ZipArtifactPathDesktop.ToString());
-                    Context.GitReleaseManagerAddAssets(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", parameters.Version.Milestone, parameters.Paths.Files.ZipArtifactPathCoreClr.ToString());
-                    Context.GitReleaseManagerClose(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", parameters.Version.Milestone);
+                    GitReleaseManagerAddAssets(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", parameters.Version.Milestone, parameters.Paths.Files.ZipArtifactPathDesktop.ToString());
+                    GitReleaseManagerAddAssets(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", parameters.Version.Milestone, parameters.Paths.Files.ZipArtifactPathCoreClr.ToString());
+                    GitReleaseManagerClose(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", parameters.Version.Milestone);
                 })
             .OnError(exception =>
             {
-                Context.Information("Publish-GitHub-Release Task failed, but continuing with next Task...");
+                Information("Publish-GitHub-Release Task failed, but continuing with next Task...");
                 publishingError = true;
             });
 
             Task("Create-Release-Notes")
                 .Does(() =>
                 {
-                    Context.GitReleaseManagerCreate(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", new GitReleaseManagerCreateSettings
+                    GitReleaseManagerCreate(parameters.GitHub.UserName, parameters.GitHub.Password, "cake-build", "cake", new GitReleaseManagerCreateSettings
                     {
                         Milestone = parameters.Version.Milestone,
                         Name = parameters.Version.Milestone,
