@@ -1,7 +1,6 @@
 public abstract class CakeFile
     {
         protected ICakeContext Context { get; }
-        protected BuildSystem BuildSystem { get; }
 
         public abstract void Execute();
 
