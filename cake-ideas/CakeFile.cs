@@ -1,7 +1,7 @@
 using System;
 using Cake.Core;
 
-namespace ConsoleApp1
+namespace CakeIdeas
 {
     public abstract class CakeFile
     {
@@ -9,10 +9,10 @@ namespace ConsoleApp1
 
         public abstract void Execute();
 
-        protected CakeTaskBuilder<ActionTask> Task(string name) => throw new NotSupportedException();
+        protected CakeTaskBuilder Task(string name) => throw new NotSupportedException();
 
-        protected void TaskSetup(Action<ICakeContext, ActionTask> action) => throw new NotSupportedException();
-        protected void TaskTeardown(Action<ICakeContext, ActionTask> action) => throw new NotSupportedException();
+        protected void TaskSetup(Action<ICakeContext, CakeTask> action) => throw new NotSupportedException();
+        protected void TaskTeardown(Action<ICakeContext, CakeTask> action) => throw new NotSupportedException();
 
         protected void Setup(Action<ICakeContext> action) => throw new NotSupportedException();
         protected void Teardown(Action<ICakeContext> action) => throw new NotSupportedException();

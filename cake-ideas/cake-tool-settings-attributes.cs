@@ -1,3 +1,10 @@
+using System;
+using System.Reflection;
+using Cake.Core;
+using Cake.Core.IO;
+using Cake.Core.IO.NuGet;
+using Cake.Core.Tooling;
+
 namespace Cake.Core.Tooling
 {
     /// <summary>
@@ -304,7 +311,7 @@ namespace Cake.Common.Tools.NuGet.Init
     /// <summary>
     /// Contains settings used by <see cref="NuGetInitSettings"/>.
     /// </summary>
-    public class NuGetInitSettings : ToolSettings
+    public class NuGetInitSettings : ToolSettingsBase
     {
         /// <summary>
         /// Gets or sets a value indicating whether a package added to an offline feed is also expanded.
@@ -332,7 +339,7 @@ namespace Cake.Common.Tools.NuGet.Init
 
 namespace Cake.Core.Tooling
 {
-    public class ToolSettings
+    public class ToolSettingsBase : ToolSettings
     {
         public ProcessArgumentBuilder AppendArgumentsFromAttributes(ProcessArgumentBuilder builder, ICakeEnvironment environment)
         {

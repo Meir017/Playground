@@ -8,7 +8,7 @@ using Cake.Core.Annotations;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace ConsoleApp1
+namespace CakeIdeas
 {
     internal class Program
     {
@@ -35,7 +35,7 @@ namespace ConsoleApp1
                 .AppendLine("// </auto-generated>")
                 .AppendLine("//------------------------------------------------------------------------------")
                 .AppendLine()
-                .AppendLine($"namespace ConsoleApp1")
+                .AppendLine($"namespace CakeIdeas")
                 .AppendLine("{")
                 .AppendLine("\tpublic abstract class CakeFileIntellisense : CakeFile")
                 .AppendLine("\t{");

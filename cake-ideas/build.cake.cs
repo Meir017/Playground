@@ -17,7 +17,7 @@ using Cake.Core.Diagnostics;
 using Cake.Core.IO;
 using Cake.Coveralls;
 
-namespace ConsoleApp1
+namespace CakeIdeas
 {
     public class CakeBuild : CakeFileIntellisense
     {
